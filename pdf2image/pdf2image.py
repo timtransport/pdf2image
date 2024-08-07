@@ -557,24 +557,23 @@ def pdfinfo_from_path(
     :rtype: Dict
     """
     try:
-        command = [_get_command_path("pdfinfo", poppler_path), pdf_path]
+        # command = [_get_command_path("pdfinfo", poppler_path), pdf_path]
 
-        if userpw is not None:
-            command.extend(["-upw", userpw])
+        # if userpw is not None:
+        #     command.extend(["-upw", userpw])
 
-        if ownerpw is not None:
-            command.extend(["-opw", ownerpw])
+        # if ownerpw is not None:
+        #     command.extend(["-opw", ownerpw])
 
-        if rawdates:
-            command.extend(["-rawdates"])
+        # if rawdates:
+        #     command.extend(["-rawdates"])
 
-        if first_page:
-            command.extend(["-f", str(first_page)])
+        # if first_page:
+        #     command.extend(["-f", str(first_page)])
 
-        if last_page:
-            command.extend(["-l", str(last_page)])
+        # if last_page:
+        #     command.extend(["-l", str(last_page)])
 
-        # Add poppler path to LD_LIBRARY_PATH
         # env = os.environ.copy()
         # if poppler_path is not None:
         #     env["LD_LIBRARY_PATH"] = poppler_path + ":" + env.get("LD_LIBRARY_PATH", "")
@@ -600,16 +599,20 @@ def pdfinfo_from_path(
 
         # if "Pages" not in d:
         #     raise ValueError
+        # return d
 
         from pdfminer.pdfparser import PDFParser
         from pdfminer.pdfdocument import PDFDocument
+        from pdfminer.pdfinterp import resolve1
         
         fp = open(pdf_path, 'rb')
 
         parser = PDFParser(fp)
         d = PDFDocument(parser)
-
-        return d.info
+        info = d.info[0]
+        info['Pages'] = int(resolve1(d.catalog['Pages'])['Count'])
+        
+        return info
 
     except OSError:
         raise PDFInfoNotInstalledError(
@@ -654,11 +657,15 @@ def pdfinfo_from_bytes(
     """
     from pdfminer.pdfparser import PDFParser
     from pdfminer.pdfdocument import PDFDocument
-    
+    from pdfminer.pdfinterp import resolve1
+
+
     parser = PDFParser(pdf_bytes)
     d = PDFDocument(parser)
+    info = d.info[0]
+    info['Pages'] = int(resolve1(d.catalog['Pages'])['Count'])
     
-    return d.info
+    return info
 
 
 def _load_from_output_folder(
