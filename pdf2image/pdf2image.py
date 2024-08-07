@@ -575,33 +575,41 @@ def pdfinfo_from_path(
             command.extend(["-l", str(last_page)])
 
         # Add poppler path to LD_LIBRARY_PATH
-        env = os.environ.copy()
-        if poppler_path is not None:
-            env["LD_LIBRARY_PATH"] = poppler_path + ":" + env.get("LD_LIBRARY_PATH", "")
-        proc = Popen(command, env=env, stdout=PIPE, stderr=PIPE)
+        # env = os.environ.copy()
+        # if poppler_path is not None:
+        #     env["LD_LIBRARY_PATH"] = poppler_path + ":" + env.get("LD_LIBRARY_PATH", "")
+        # proc = Popen(command, env=env, stdout=PIPE, stderr=PIPE)
 
-        try:
-            out, err = proc.communicate(timeout=timeout)
-        except TimeoutExpired:
-            proc.kill()
-            outs, errs = proc.communicate()
-            raise PDFPopplerTimeoutError("Run poppler poppler timeout.")
+        # try:
+        #     out, err = proc.communicate(timeout=timeout)
+        # except TimeoutExpired:
+        #     proc.kill()
+        #     outs, errs = proc.communicate()
+        #     raise PDFPopplerTimeoutError("Run poppler poppler timeout.")
 
-        d = {}
-        for field in out.decode("utf8", "ignore").split("\n"):
-            sf = field.split(":")
-            key, value = sf[0], ":".join(sf[1:])
-            if key != "":
-                d[key] = (
-                    int(value.strip())
-                    if key in PDFINFO_CONVERT_TO_INT
-                    else value.strip()
-                )
+        # d = {}
+        # for field in out.decode("utf8", "ignore").split("\n"):
+        #     sf = field.split(":")
+        #     key, value = sf[0], ":".join(sf[1:])
+        #     if key != "":
+        #         d[key] = (
+        #             int(value.strip())
+        #             if key in PDFINFO_CONVERT_TO_INT
+        #             else value.strip()
+        #         )
 
-        if "Pages" not in d:
-            raise ValueError
+        # if "Pages" not in d:
+        #     raise ValueError
 
-        return d
+        from pdfminer.pdfparser import PDFParser
+        from pdfminer.pdfdocument import PDFDocument
+        
+        fp = open(pdf_path, 'rb')
+
+        parser = PDFParser(fp)
+        d = PDFDocument(parser)
+
+        return d.info
 
     except OSError:
         raise PDFInfoNotInstalledError(
@@ -644,24 +652,13 @@ def pdfinfo_from_bytes(
     :return: Dictionary containing various information on the PDF
     :rtype: Dict
     """
-    fh, temp_filename = tempfile.mkstemp()
-    try:
-        with open(temp_filename, "wb") as f:
-            f.write(pdf_bytes)
-            f.flush()
-        return pdfinfo_from_path(
-            temp_filename,
-            userpw=userpw,
-            ownerpw=ownerpw,
-            poppler_path=poppler_path,
-            rawdates=rawdates,
-            timeout=timeout,
-            first_page=first_page,
-            last_page=last_page,
-        )
-    finally:
-        os.close(fh)
-        os.remove(temp_filename)
+    from pdfminer.pdfparser import PDFParser
+    from pdfminer.pdfdocument import PDFDocument
+    
+    parser = PDFParser(pdf_bytes)
+    d = PDFDocument(parser)
+    
+    return d.info
 
 
 def _load_from_output_folder(
